@@ -18,7 +18,7 @@ import torch.nn as nn
 import torchvision
 from tqdm import tqdm
 
-from . import torch_utils  # , google_utils
+# from . import torch_utils  # , google_utils
 
 # Set printoptions
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
@@ -27,6 +27,7 @@ matplotlib.rc('font', **{'size': 11})
 
 # Prevent OpenCV from multithreading (to use PyTorch DataLoader)
 cv2.setNumThreads(0)
+
 
 def rescale_boxes(boxes, current_dim, original_shape):
     """ Rescales bounding boxes to the original shape """
@@ -43,6 +44,7 @@ def rescale_boxes(boxes, current_dim, original_shape):
     boxes[:, 2] = ((boxes[:, 2] - pad_x // 2) / unpad_w) * orig_w
     boxes[:, 3] = ((boxes[:, 3] - pad_y // 2) / unpad_h) * orig_h
     return boxes
+
 
 def init_seeds(seed=0):
     random.seed(seed)

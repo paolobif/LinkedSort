@@ -20,9 +20,7 @@ import time
 from tqdm import tqdm
 
 
-
-
-def analyzeSORT(df,threshold,slow_move,delta_overlap):
+def analyzeSORT(df, threshold, slow_move, delta_overlap):
     #threshold = 45
     vc = df.label.value_counts()
     test = vc[vc > threshold].index.tolist()
@@ -68,12 +66,13 @@ def analyzeSORT(df,threshold,slow_move,delta_overlap):
                             deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])
                             deadboxes.append([x1A, y1A, x2A, y2A])
                             #csv_outputs.append((frameNA/framerate+start_age))
-            frameNB, x1B, y1B, x2B, y2B,labelB, deltaB, catagoryB, *_ = row #set n+1 values to n values and then repeat
-            fill +=1
-            if deadcount == slow_move+1: #break out of loop once things have been called enough times
+            frameNB, x1B, y1B, x2B, y2B,labelB, deltaB, catagoryB, *_ = row  # set n+1 values to n values and then repeat
+            fill += 1
+            if deadcount == slow_move + 1:  # break out of loop once things have been called enough times
                 break
-    csv_outputs = pd.DataFrame(deathspots, columns = ['frame','x1A', 'y1A', 'x2A', 'y2A','labelA'])
+    csv_outputs = pd.DataFrame(deathspots, columns=['frame', 'x1', 'y1', 'x2', 'y2', 'label'])
     return(csv_outputs)
+
 
 def bb_intersection_over_union(boxA, boxB):
     # determine the (x, y)-coordinates of the intersection rectangle
@@ -94,32 +93,30 @@ def bb_intersection_over_union(boxA, boxB):
 
         iou = interArea / float(boxAArea + boxBArea - interArea)
     else:
-        iou=0
+        iou = 0
     # return the intersection over union value
     return iou
 
 
-
 if __name__ == "__main__":
 
-    CSV_FOLD_PATH = sys.argv[1] #folder of YOLO outputs
+    CSV_FOLD_PATH = sys.argv[1]  # folder of YOLO outputs
     OUT_FOLD_PATH = sys.argv[2]
 
-    #ARGS
-    threshold = 75 #number of frames a worm has to be tracked in order to be analyzed
-    slow_move = 20 #number of frames overlapping by 'delta_overlap' before being called dead or paralyzed (15ish=dead,5=paralyzed)
-    delta_overlap = 0.9 #%overlap to be called motionless (.9 for dead, .7 for paralyzed
-
+    # ARGS
+    threshold = 75  # number of frames a worm has to be tracked in order to be analyzed
+    slow_move = 20  # number of frames overlapping by 'delta_overlap' before being called dead or paralyzed (15ish=dead,5=paralyzed)
+    delta_overlap = 0.9  # %overlap to be called motionless (.9 for dead, .7 for paralyzed
 
     csv_list = os.listdir(CSV_FOLD_PATH)
     csv_list = list(filter(lambda f: f.endswith('.csv'), csv_list))
 
     print(csv_list)
     csvindex = 0
-    #loop through list of CSVs
+    # loop through list of CSVs
     for csv_name in csv_list:
-        csvindex +=1
-        print("starting", csv_name,"which is ",csvindex,"of",len(csv_list))
+        csvindex += 1
+        print("starting", csv_name, "which is", csvindex, "of", len(csv_list))
         start_time = time.time()
         csv_PATH = os.path.join(CSV_FOLD_PATH, csv_name)
         OUT_PATH = os.path.join(OUT_FOLD_PATH, csv_name)
@@ -238,12 +235,12 @@ if __name__ == "__main__":
         csv_outputs['catagory'] = 'alive'
 
         #analyze for death
-        outputs = analyzeSORT(csv_outputs,threshold,slow_move,delta_overlap)
+        outputs = analyzeSORT(csv_outputs, threshold, slow_move, delta_overlap)
         outputs['expID'] = os.path.basename(csv_PATH).strip('.csv')
 
         #export and move to next csv file
         pd.DataFrame(outputs).to_csv(OUT_PATH, mode='w', header=True, index=None)
-        print('finished in:',time.time()-start_time,'seconds')
+        print('finished in:', time.time()-start_time, 'seconds')
 
 
 
