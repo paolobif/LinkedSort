@@ -17,7 +17,10 @@ import fnmatch
 import scipy.optimize
 from skimage.metrics import structural_similarity as ssim
 import time
+import torch
 from tqdm import tqdm
+
+from classify import SortClassification
 
 
 def analyzeSORT(df, threshold, slow_move, delta_overlap):
@@ -101,7 +104,8 @@ def bb_intersection_over_union(boxA, boxB):
 if __name__ == "__main__":
 
     CSV_FOLD_PATH = sys.argv[1]  # folder of YOLO outputs
-    OUT_FOLD_PATH = sys.argv[2]
+    VID_FOLD_PATH = sys.argv[2]  # folder of videos
+    OUT_FOLD_PATH = sys.argv[3]
 
     # ARGS
     threshold = 75  # number of frames a worm has to be tracked in order to be analyzed
@@ -234,14 +238,24 @@ if __name__ == "__main__":
         csv_outputs['delta'] = 0
         csv_outputs['catagory'] = 'alive'
 
-        #analyze for death
+        # Sort on backfilled data
         outputs = analyzeSORT(csv_outputs, threshold, slow_move, delta_overlap)
-        outputs['expID'] = os.path.basename(csv_PATH).strip('.csv')
+        expID = os.path.basename(csv_PATH).strip('.csv')
+
+        # Classification layer of outputs
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        video_path = os.path.join(VID_FOLD_PATH, f"{expID}.avi")
+        if not os.path.exists(video_path):
+            print("Unable to find video file for exp:", expID)
+
+        sort_classifier = SortClassification(outputs, video_path, device)
+        outputs = sort_classifier.update_sort()  # Update outputs with classification
+
+        outputs['expID'] = expID
 
         #export and move to next csv file
         pd.DataFrame(outputs).to_csv(OUT_PATH, mode='w', header=True, index=None)
         print('finished in:', time.time()-start_time, 'seconds')
-
 
 
 

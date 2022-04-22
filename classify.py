@@ -104,6 +104,13 @@ class SortClassification:
 
         return updated_df
 
+    def update_sort(self):
+        """Updates the sort output with the new classification. Returns the updated sort output."""
+        updated_df = self.process_all_worms()
+        new_df = updated_df[updated_df.real]
+        new_df = new_df.drop(columns=["real"])
+        return new_df
+
 
 if __name__ == "__main__":
     worm_id = 1000
