@@ -118,9 +118,8 @@ if __name__ == "__main__":
     print(csv_list)
     csvindex = 0
     # loop through list of CSVs
-    for csv_name in csv_list:
+    for csv_name in tqdm(csv_list):
         csvindex += 1
-        print("starting", csv_name, "which is", csvindex, "of", len(csv_list))
         start_time = time.time()
         csv_PATH = os.path.join(CSV_FOLD_PATH, csv_name)
         OUT_PATH = os.path.join(OUT_FOLD_PATH, csv_name)
@@ -135,10 +134,10 @@ if __name__ == "__main__":
         #initialize sort tracker and create container
         mot_tracker1 = Sort(max_age=0, min_hits=0, iou_threshold=0.3) #see SORT documentation NEEDS TUNING
         sort_outputs = []
-        print("sorting")
+        
 
         #sort from end of experiment backwards
-        for x in tqdm(reversed(unique),total=len(unique)):
+        for x in reversed(unique),total=len(unique):
             frame = int(x)
             filtval = df['frame'] == x
             boxes_xyxy = np.asarray(df[filtval])[:,1:5]
@@ -152,10 +151,9 @@ if __name__ == "__main__":
         #create container dataframes for maximum and minimum frames for each label
         dfmin = pd.DataFrame(columns=['frame', 'x1', 'y1','x2','y2','label'])
         dfmax = pd.DataFrame(columns=['frame', 'x1', 'y1','x2','y2','label'])
-        print("creating max/min arrays")
         #for each label, create max and minimum arrays. This is done dumbly feel free to improve via vectorization.
         uniqueTracks = sort_outputs["label"].unique()
-        for track in tqdm(uniqueTracks):
+        for track in uniqueTracks:
             filtval = sort_outputs['label'] == track
             trackdf = sort_outputs[filtval]
             max_value = trackdf['frame'].max()
@@ -180,11 +178,11 @@ if __name__ == "__main__":
         dfmin = dfmin.apply(pd.to_numeric)
         dfmin = dfmin.apply(np.int64)
 
-        print("linking")
+        
 
 
 
-        pbar = tqdm(total =len(uniqueTracks)+1)
+        
 
         #this section is kinda a mess but it works
         #goes from labels at the end of the experiment and progresses toward the beginning
@@ -228,8 +226,7 @@ if __name__ == "__main__":
                         break
                     if frameB == (frameA-144): #threshold of time
                         break
-            pbar.update(1)
-        pbar.close()
+
 
 
         #reformat output to be accepted into analyze sort
@@ -255,7 +252,7 @@ if __name__ == "__main__":
 
         #export and move to next csv file
         pd.DataFrame(outputs).to_csv(OUT_PATH, mode='w', header=True, index=None)
-        print('finished in:', time.time()-start_time, 'seconds')
+        #print('finished in:', time.time()-start_time, 'seconds')
 
 
 
