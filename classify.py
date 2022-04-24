@@ -47,7 +47,7 @@ class SortClassification:
         output = output.squeeze(0).cpu().detach().numpy()[0]
         return output
 
-    def worm_from_frame(self, location, frame_id):
+    def worm_from_frame(self, location, frame_id, pad=0):
         """Using worm_id gets the location from the sort_outputs
         and returns the croped image with the worm in it.
 
@@ -59,6 +59,10 @@ class SortClassification:
         self.video.set(cv2.CAP_PROP_POS_FRAMES, frame_id - 1)
         ret, frame = self.video.read()  # Read frame
         x1, y1, x2, y2 = location
+
+        # If pad is greater than frame size then pad is set to 0.
+        # x1, x2 = x1 - pad, x2 + pad
+        # y1, y2 = y1 - pad, y2 + pad
         worm = frame[y1:y2, x1:x2]
         return worm
 
@@ -94,10 +98,17 @@ class SortClassification:
 
         for worm_id in self.worm_ids:
             class_list = self.process_worm(worm_id)
-            class_list_smooth = savgol_filter(class_list, 51, 2)
+
+            # class_list_smooth = savgol_filter(filter_size, 51, 2)
             # If the class is less than thresh the worm left the box.
-            final_window = class_list_smooth[-20:]
-            class_min = np.min(final_window)
+            window = -20
+            if len(class_list) < 20:
+                window = -len(class_list) - 1
+
+            final_window = class_list[window:]
+            class_min = np.mean(final_window)
+
+            # class_min = np.min(final_window)
             # If there is no worm in the window in the last 20 frames then remove worm.
             if class_min < threshold:
                 updated_df.loc[updated_df.label == worm_id, "real"] = False

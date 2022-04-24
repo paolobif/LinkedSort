@@ -115,6 +115,8 @@ if __name__ == "__main__":
     csv_list = os.listdir(CSV_FOLD_PATH)
     csv_list = list(filter(lambda f: f.endswith('.csv'), csv_list))
 
+    csv_list = np.array(csv_list)
+    csv_list = csv_list[24:]
     print(csv_list)
     csvindex = 0
     # loop through list of CSVs
