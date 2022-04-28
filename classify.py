@@ -5,7 +5,7 @@ import numpy as np
 from scipy.signal import savgol_filter
 
 from classifier.classifier import WormClassifier
-from classifier.classifier_utils import Transformer
+from utils.model_utils import Transformer
 
 
 class SortClassification:
@@ -28,7 +28,7 @@ class SortClassification:
         # Load Model.
         self.classifier = WormClassifier().to(self.device)
         self.classifier.load_state_dict(torch.load(self.weights_path, map_location=self.device))
-        print(f"Loaded weights from {self.weights_path} \nTo device: {self.device}")
+        print(f"Classifier -> Loaded weights from {self.weights_path} \nTo device: {self.device}")
 
         # Declare video and organize sort output.
         self.video = cv2.VideoCapture(self.video_path)
