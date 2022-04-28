@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+# Utils for find_best_matches --------------------------------------------------
+
 
 def find_distaces(manual, automated):
     """Returns list of distances"""
@@ -39,5 +41,22 @@ def find_best_matches(sort_xy, tracked_xy, min_distance=40):
         rows.append(row)
 
     return pd.DataFrame(rows), not_used
+
+# Utils for the encoder --------------------------------------------------------
+
+
+def get_distance(a, b):
+    dist = np.linalg.norm(a - b)
+    return dist
+
+
+def get_worm_tod(points, xs):
+    """"""
+    for i in range(len(points) - 1, 0, -1):
+        end, start = points[i]
+        if end < start:
+            return xs[i]
+    return 0
+
 
 

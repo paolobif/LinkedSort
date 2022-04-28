@@ -1213,3 +1213,70 @@ def nms_counts(outputs: np.ndarray, overlapThresh, counts=False):
         return boxes[pick].astype(float)
 
 
+# -----------------------------------------------------------------------------------
+# Functions to determine experiment end
+
+def worms_from_frame_range(df, lower: int, upper: int):
+    """Given CSV_Reader will retrieve all the bounding boxes detected
+    within a paticular lower to upper frame range
+
+    Args:
+        reader (CSV_Reader): CSV_Reader object.
+        lower (int): lower frame bound.
+        upper (int): upper frame bound.
+    """
+    all_bbs = df[df["frame"].between(lower, upper)]
+    all_bbs = all_bbs.to_numpy()[:, 1:5]  # Get only important columns.
+    return all_bbs
+
+
+def screen_exp(df, interval: int, exp_id: int):
+    """Itterates through frames in the experiment
+    and runs NMS on the detections over the spec. interval.
+
+    Args:
+        df (_type_): df with yolo data.
+        interval (int): how far to check for running average.
+        exp_id (int): exp id for saving the csv.
+
+    """
+    skip = 5 # Skip so that the running total isn't done every single frame...
+
+    frame_count = int(df["frame"].max())
+    # print(frame_count)
+    # frame_count = 2480
+    counts = []
+    for i in tqdm(range(frame_count, 0, -skip)):
+        bbs = worms_from_frame_range(df, i, i + interval)
+        nms = nms_counts(bbs, 0.8)
+        counts.append([exp_id, i, len(nms)])
+    return counts
+
+
+def first_death(points, frames, val=0.6):
+    # 50% of max slope is where first death is called.
+    top = np.max(points)
+    thresh = val * top
+    idxs = np.where(points > thresh)
+    frame_idx = np.max(idxs)
+    frame = frames[frame_idx]
+    return frame
+
+
+def last_death(points, frames, val=0, pad=0):
+    top_idx = np.argmax(points)
+    idxs = np.where(points < val)[0]
+    upper_idxs = idxs[idxs < top_idx]
+
+    if len(upper_idxs) == 0:
+        end = frames[0] - 1
+    else:
+        upper = np.max(upper_idxs)
+        end = frames[upper] + pad
+        if end >= frames[0]:
+            end = frames[0] - 1
+
+    return end
+
+# END
+# -----------------------------------------------------------------------------------
