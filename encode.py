@@ -178,8 +178,7 @@ class ReverseEncoder():
         distances = []  # Distance from start and end of exp.
         frames = []  # Tracks the frame id of each distance.
 
-        print("Running encoder...")
-        for frame_id in tqdm(range(lower, upper, skip)):
+        for frame_id in range(lower, upper, skip):
             # Get the worm from the frame.
             worm = self.get_worm_from_frame(bb, frame_id, pad=(2, 2))
             output = self.encode_img(worm)
@@ -196,8 +195,30 @@ class ReverseEncoder():
         encoded_tod = get_worm_tod(distances, frames)
         return encoded_tod
 
+    def process_wois(self, save_path=None):
+        """Processes the worms of interest through the encoder."""
+        output = self.sort_output.copy()
+        output = output.drop(columns=["label"])
+
+        upper, lower = self.bounds
+        print("Bulk encoding wois.")
+        for bb in tqdm(self.woi):
+            encoded_tod = self.process_worm(bb, upper, lower)
+            x1, y1, w, h = bb
+            x2, y2 = x1 + w, y1 + h
+            row = {"frame": encoded_tod, "x1": x1, "y1": y1,
+                   "x2": x2, "y2": y2, "expID": self.expID}
+            output = output.append(row, ignore_index=True)
+
+        if save_path:
+            output.to_csv(save_path, index=False)
+
+        return output
+
 
 if __name__ == "__main__":
+    bulk_test = True
+
     def test_load():
         sort_output = "data/results/4_v1/356.csv"
         yolo_csv = "data/samples/csvs/356.csv"
@@ -231,11 +252,18 @@ if __name__ == "__main__":
         return obj
 
     def test_process():
+        save_path = "data/results/samples/356_auto.csv"
         obj = test_encode()
         bb = obj.woi[3]
         lower, upper = obj.bounds
-        tod = obj.process_worm(bb, lower, upper)
-        print(tod)
+        obj.process_worm(bb, lower, upper)
+        print("Test Single Process -> Success")
+        if bulk_test:
+            output = obj.process_wois(save_path)
+            print("Test Bulk Process -> Success")
+            print(output)
+        else:
+            print("Bulk test disabled")
 
     def test():
         test_process()
