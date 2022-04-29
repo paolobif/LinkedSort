@@ -243,7 +243,7 @@ if __name__ == "__main__":
         outputs = analyzeSORT(csv_outputs, threshold, slow_move, delta_overlap)
         expID = os.path.basename(csv_PATH).strip('.csv')
 
-        # Classification layer of outputs
+        # # Classification layer of outputs
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         video_path = os.path.join(VID_FOLD_PATH, f"{expID}.avi")
         if not os.path.exists(video_path):
@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
         outputs['expID'] = expID
 
-        # Run through autoencoder.
+        # # Run through autoencoder.
         reverse_encoder = ReverseEncoder(outputs, csv_PATH, video_path, device=device)
         outputs = reverse_encoder.process_wois()
 

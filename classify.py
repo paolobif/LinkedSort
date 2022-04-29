@@ -2,10 +2,9 @@ import cv2
 import torch
 import pandas as pd
 import numpy as np
-from scipy.signal import savgol_filter
 
 from classifier.classifier import WormClassifier
-from utils.model_utils import Transformer
+from utils.model_utils import ClassTransformer
 
 
 class SortClassification:
@@ -14,10 +13,10 @@ class SortClassification:
     the classifier to check if the worm moves out later. If the worm
     moves out over 144 frames then the death call is removed.
     """
-    weights_path = "classifier/weights/best-model-mask.pt"
-    img_size = 64  # Input image size (img_size x img_size)
-    transformer = Transformer(thresh_use=True, square_use=True, img_size=img_size)
-    scan_range = 144  # How far forward in time to scan the bounding box
+    weights_path = "classifier/weights/316.pt"
+    img_size = 24  # Input image size (img_size x img_size)
+    transformer = ClassTransformer(img_size=img_size)
+    scan_range = 200  # How far forward in time to scan the bounding box
 
     def __init__(self, sort_output, video_path: str, device="cpu"):
         # Define params.
@@ -66,7 +65,7 @@ class SortClassification:
         worm = frame[y1:y2, x1:x2]
         return worm
 
-    def process_worm(self, worm_id):
+    def process_worm(self, worm_id, window):
         """Takes worm id and then scans the video {144} frames ahead
         to see if the worm moves out using classifier.
         If it does then remove the death call.
@@ -83,30 +82,31 @@ class SortClassification:
 
         class_list = []
         # Scan the video.
-        for frame_id in range(lower, upper):
+        for frame_id in range(upper - window, upper):
             worm = self.worm_from_frame(loaction, frame_id)
             worm_class = self.classify(worm)
             class_list.append(worm_class)
 
         return class_list
 
-    def process_all_worms(self, threshold=0.4):
+    def process_all_worms(self, threshold=0.1):
         """Process all the worms from the sort output to check
         if they leave their designated bounding box."""
         updated_df = self.sort_output.copy()
         updated_df["real"] = True
+        window = 20
 
         for worm_id in self.worm_ids:
-            class_list = self.process_worm(worm_id)
+            class_list = self.process_worm(worm_id, window)
 
             # class_list_smooth = savgol_filter(filter_size, 51, 2)
             # If the class is less than thresh the worm left the box.
-            window = -20
-            if len(class_list) < 20:
-                window = -len(class_list) - 1
+            # if len(class_list) < 20:
+                # window = -len(class_list) - 1
 
-            final_window = class_list[window:]
-            class_min = np.mean(final_window)
+            # final_window = class_list[window:]
+            # class_min = np.mean(final_window)
+            class_min = np.mean(class_list)
 
             # class_min = np.min(final_window)
             # If there is no worm in the window in the last 20 frames then remove worm.
@@ -115,9 +115,9 @@ class SortClassification:
 
         return updated_df
 
-    def update_sort(self):
+    def update_sort(self, threshold=0.1):
         """Updates the sort output with the new classification. Returns the updated sort output."""
-        updated_df = self.process_all_worms()
+        updated_df = self.process_all_worms(threshold=threshold)
         new_df = updated_df[updated_df.real]
         new_df = new_df.drop(columns=["real"])
         return new_df
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     worm_id = 1000
 
     def test_load():
-        sort = "data/results/samples/356.csv"
+        sort = "data/results/samples/sort/356.csv"
         video_path = "data/samples/vids/356.avi"
         device = "cpu"
 
@@ -152,8 +152,9 @@ if __name__ == "__main__":
 
     def test_process_worm(obj):
         # worm_id = 10
-        class_list = obj.process_worm(worm_id)
-        assert(len(class_list) == obj.scan_range), "Processing failed."
+        window = 20
+        class_list = obj.process_worm(worm_id, window=window)
+        assert(len(class_list) == window), "Processing failed."
         print("Test Process Worm Successful.")
         return class_list
 

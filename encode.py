@@ -7,8 +7,8 @@ from tqdm import tqdm
 from scipy.signal import savgol_filter
 
 
-from autoencoder.autoencoder import Autoencoder
-from utils.model_utils import Transformer
+from classifier.classifier import WormClassifier
+from utils.model_utils import ClassTransformer
 from utils.utils import nms_counts, screen_exp, first_death, last_death
 from utils.encode_utils import *
 
@@ -18,9 +18,9 @@ class ReverseEncoder():
     Also gets the outputs from the classification. For any missed calls it'll run
     back with the autoencoder to updated the list of worm calls.
     """
-    weights_path = "autoencoder/weights/autoencoder_4.pt"
-    img_size = 28
-    transformer = Transformer(thresh_use=True, square_use=True, img_size=img_size)
+    weights_path = "classifier/weights/316.pt"
+    img_size = 24
+    transformer = ClassTransformer(img_size=img_size)
 
     def __init__(self, sort_output, yolo_csv: str, video_path: str, bounds: tuple = False, device="cpu"):
         """
@@ -42,7 +42,7 @@ class ReverseEncoder():
         self.video_path = video_path
         self.device = device
 
-        self.encoder = Autoencoder().to(device)
+        self.encoder = WormClassifier().to(device)
         self.encoder.load_state_dict(torch.load(self.weights_path, map_location=self.device))
         print(f"Encoder -> Loaded weights from {self.weights_path} \nTo device: {self.device}")
 
@@ -58,7 +58,7 @@ class ReverseEncoder():
             self.bounds = self.experiment_bounds()
 
         # Worms of interest that are not picked up by sort.
-        self.woi = self.declare_woi(window=10, min_count=2, nms=0.7)
+        self.woi = self.declare_woi(window=10, min_count=1, nms=0.5)
 
     def experiment_bounds(self, pad: int = 75, val: float = 0):
         """ Gets the upper and lower bounds of an experiment based
@@ -153,13 +153,16 @@ class ReverseEncoder():
 
         return to_track
 
-    def encode_img(self, img):
+    def encode_img(self, img, classifier=False):
         input_img = self.transformer(img)
         with torch.no_grad():
             input_img = input_img.to(self.device)
             input_img = input_img.unsqueeze(1)
-            output = self.encoder.forward(input_img, encode=True)
+            output, clas = self.encoder.forward(input_img, encode=True)
             output = output.squeeze(0).detach().cpu()
+
+        if classifier:
+            return output, clas
 
         return output
 
@@ -172,8 +175,11 @@ class ReverseEncoder():
             upper (int): Upper bound of frame id.
         """
         skip = 5  # Skip every n frames.
-        ref_lower = self.encode_img(self.get_worm_from_frame(bb, lower, pad=(2, 2)))
-        ref_upper = self.encode_img(self.get_worm_from_frame(bb, upper, pad=(2, 2)))
+
+        ref_lower, lower_class = self.encode_img(self.get_worm_from_frame(bb, lower, pad=(2, 2)), classifier=True)
+        ref_upper, upper_class = self.encode_img(self.get_worm_from_frame(bb, upper, pad=(2, 2)), classifier=True)
+        # print(bb, upper_class)
+        # print(lower_class)
 
         distances = []  # Distance from start and end of exp.
         frames = []  # Tracks the frame id of each distance.
@@ -247,7 +253,7 @@ if __name__ == "__main__":
         assert(worm.shape[0] == bb[3] + 2 * pad[1]), "Worm shape incorrect"
         assert(worm.shape[1] == bb[2] + 2 * pad[0]), "Worm shape incorrect"
         encoded_worm = obj.encode_img(worm)
-        assert(encoded_worm.shape[0] == 64), "Encoded shape incorrect"
+        assert(encoded_worm.shape[0] == 36), "Encoded shape incorrect"
         print("Test Encode -> Success")
         return obj
 
@@ -266,6 +272,8 @@ if __name__ == "__main__":
             print("Bulk test disabled")
 
     def test():
+        # test_encode()
+        # test_match()
         test_process()
 
     test()

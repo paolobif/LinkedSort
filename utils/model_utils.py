@@ -58,3 +58,19 @@ class Transformer:
 
     def __call__(self, img) -> np.ndarray:
         return self.transformer(img)
+
+
+class ClassTransformer:
+    def __init__(self, img_size=28) -> None:
+        self.img_size = img_size
+
+        self.transformer = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Grayscale(num_output_channels=1),
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5), (0.5))
+        ])
+
+    def __call__(self, img) -> np.ndarray:
+        return self.transformer(img)
