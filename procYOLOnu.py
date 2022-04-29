@@ -21,6 +21,7 @@ import torch
 from tqdm import tqdm
 
 from classify import SortClassification
+from encode import ReverseEncoder
 
 
 def analyzeSORT(df, threshold, slow_move, delta_overlap):
@@ -116,7 +117,7 @@ if __name__ == "__main__":
     csv_list = list(filter(lambda f: f.endswith('.csv'), csv_list))
 
     csv_list = np.array(csv_list)
-    csv_list = csv_list[24:]
+    csv_list = csv_list[:]
     print(csv_list)
     csvindex = 0
     # loop through list of CSVs
@@ -136,10 +137,11 @@ if __name__ == "__main__":
         #initialize sort tracker and create container
         mot_tracker1 = Sort(max_age=0, min_hits=0, iou_threshold=0.3) #see SORT documentation NEEDS TUNING
         sort_outputs = []
-        
+
 
         #sort from end of experiment backwards
-        for x in reversed(unique),total=len(unique):
+        total = len(unique)
+        for x in reversed(unique):
             frame = int(x)
             filtval = df['frame'] == x
             boxes_xyxy = np.asarray(df[filtval])[:,1:5]
@@ -180,11 +182,11 @@ if __name__ == "__main__":
         dfmin = dfmin.apply(pd.to_numeric)
         dfmin = dfmin.apply(np.int64)
 
-        
 
 
 
-        
+
+
 
         #this section is kinda a mess but it works
         #goes from labels at the end of the experiment and progresses toward the beginning
@@ -251,6 +253,10 @@ if __name__ == "__main__":
         outputs = sort_classifier.update_sort()  # Update outputs with classification
 
         outputs['expID'] = expID
+
+        # Run through autoencoder.
+        reverse_encoder = ReverseEncoder(outputs, csv_PATH, video_path, device=device)
+        outputs = reverse_encoder.process_wois()
 
         #export and move to next csv file
         pd.DataFrame(outputs).to_csv(OUT_PATH, mode='w', header=True, index=None)

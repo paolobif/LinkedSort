@@ -70,7 +70,7 @@ class ReverseEncoder():
         """
         interval = 5  # Frame count of moving screen window.
         counts = np.array(screen_exp(self.df, interval, self.expID))
-        frames = counts[:, 1]
+        frames = counts[:, 1].astype(int)
         y = counts[:, 2]
         y_deriv = savgol_filter(y, 101, 2, deriv=1)
         exp_end = last_death(y_deriv, frames, val=val, pad=pad)
@@ -142,7 +142,7 @@ class ReverseEncoder():
         sort_copy["h"] = (sort_copy["y2"] - sort_copy["y1"]) / 2
 
         sort_xy = np.transpose([sort_copy["x1"] + sort_copy["w"], sort_copy["y1"] + sort_copy["h"]])
-        tracked_xy = tracked[:, :2]
+        tracked_xy = tracked[:, :2].copy()
         tracked_xy[:, 0] = tracked_xy[:, 0] + tracked[:, 2] / 2
         tracked_xy[:, 1] = tracked_xy[:, 1] + tracked[:, 3] / 2
 
@@ -201,7 +201,7 @@ class ReverseEncoder():
         output = output.drop(columns=["label"])
 
         upper, lower = self.bounds
-        print("Bulk encoding wois.")
+        print(f"Bulk encoding {len(self.woi)}) wois.")
         for bb in tqdm(self.woi):
             encoded_tod = self.process_worm(bb, upper, lower)
             x1, y1, w, h = bb
