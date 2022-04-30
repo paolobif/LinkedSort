@@ -117,7 +117,7 @@ if __name__ == "__main__":
     csv_list = list(filter(lambda f: f.endswith('.csv'), csv_list))
 
     csv_list = np.array(csv_list)
-    csv_list = csv_list[:]
+    csv_list = ["321.csv", "320.csv"]
     print(csv_list)
     csvindex = 0
     # loop through list of CSVs

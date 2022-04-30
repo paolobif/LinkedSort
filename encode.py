@@ -105,12 +105,12 @@ class ReverseEncoder():
         """
         assert(frame_id < self.frame_count), "Frame id out of bounds."
         frame = self.get_frame(frame_id)
-        size_x, size_y, _ = frame.shape
+        size_y, size_x, _ = frame.shape
         x, y, w, h = bb
         x1, x2 = x - pad[0], x + w + pad[0]
         y1, y2 = y - pad[1], y + h + pad[1]
-        x1, x2 = max(0, x1), min(size_x, x2)
-        y1, y2 = max(0, y1), min(size_y, y2)
+        x1, x2 = max(0, x1), min(size_x - 1, x2)
+        y1, y2 = max(0, y1), min(size_y - 1, y2)
         worm = frame[y1:y2, x1:x2]
         return worm
 
