@@ -22,17 +22,12 @@ from tqdm import tqdm
 
 
 
-
-def analyzeSORT(df,threshold,slow_move,delta_overlap):
-    #threshold = 45
+def analyzeSORT3(df,threshold,slow_move,delta_overlap):
     vc = df.label.value_counts()
     test = vc[vc > threshold].index.tolist()
     deadboxes = []
-    deathspots = []
-    #slow_move = 3
-    #delta_overlap =0.8    
-    for ID in test:        
-        #print(ID)
+    deathspots = []  
+    for ID in test:      
         filtval = df['label'] ==ID
         interim = df[filtval]
         interimD = []
@@ -40,27 +35,24 @@ def analyzeSORT(df,threshold,slow_move,delta_overlap):
         fill = 0
         deadcount = 0
         alivecount = 0
-        #putdeathsite = []
-        #frameNE, x1E, y1E, x2E, y2E, labelE, deltaE, catagoryE, *_ = interim2[0]
+        isdead = 0
+        x1E = interim['x1'].iloc[0]
+        y1E = interim['y1'].iloc[0]
+        x2E = interim['x2'].iloc[0]
+        y2E = interim['y2'].iloc[0]
         for row in reversed(interim2):
             frameNA, x1A, y1A, x2A, y2A, labelA, deltaA, catagoryA, *_ = row
             if fill > 1:
                 boxA = [x1A, y1A, x2A, y2A]
                 boxB = [x1B, y1B, x2B, y2B]
                 deltaA = bb_intersection_over_union(boxA, boxB) 
-                #print(deltaA)
                 if deltaA > delta_overlap:
-                    deadcount += 1
-                    #print(deadcount)
-                #print(fill)
-                #else:
-                    #deadcount-=1
-               
-                if deadcount == slow_move+1:
+                    deadcount+=abs(frameNA-frameNB)           
+                if deadcount > slow_move:
                     if deadboxes == []:
-                        deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])     
-                        #putdeathsite.append([frameNA, x1A, y1A, x2A, y2A,labelA])
-                        deadboxes.append([x1A, y1A, x2A, y2A])  
+                        deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])                          
+                        deadboxes.append([x1A, y1A, x2A, y2A])
+                        isdead = 1
                         x1Z = x1A
                         y1Z = y1A
                         x2Z = x2A
@@ -72,31 +64,107 @@ def analyzeSORT(df,threshold,slow_move,delta_overlap):
                             x1D, y1D, x2D, y2D, *_ = box
                             boxD = [x1D, y1D, x2D, y2D]
                             deltaD = bb_intersection_over_union(boxA, boxD)  
-                            if deltaD > 0.4:
+                            if deltaD > 0.2:
                                 notunique = 1
                         if notunique == 0:
                             deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])  
                             deadboxes.append([x1A, y1A, x2A, y2A])
+                            isdead = 1
                             x1Z = x1A
                             y1Z = y1A
                             x2Z = x2A
                             y2Z = y2A
-
-            frameNB, x1B, y1B, x2B, y2B,labelB, deltaB, catagoryB, *_ = row
-            fill +=1
-            if deadcount > slow_move+1:               
-                boxA = [x1A, y1A, x2A, y2A]
-                boxD = [x1Z, y1Z, x2Z, y2Z]
-                deltaD = bb_intersection_over_union(boxA, boxD) 
-                if deltaA < 0.5:
-                    alivecount+=1
-                    if alivecount > 5:
-                        deadcount = 10
+                if isdead==1 and deadcount > slow_move:               
+                    boxA = [x1B, y1B, x2B, y2B]
+                    boxZ = [x1Z, y1Z, x2Z, y2Z]
+                    deltaZ = bb_intersection_over_union(boxA, boxZ) 
+                    if deltaZ < 0.3:
+                        #alivecount+=abs(frameNA-frameNB)
+                        #print(frameNA,frameNB,deltaZ,deadcount,labelA)
+                        #if alivecount > 1:
+                        deadcount = 1
                         deathspots =  deathspots[:-1] 
                         deadboxes = deadboxes[:-1]
-            if deadcount > 3*slow_move:
-                break
+                        isdead=0
+                if deadcount > 3*slow_move:
+                    #print("broke cause of long",frameNA,frameNB,deadcount)
+                    break
+            frameNB, x1B, y1B, x2B, y2B,labelB, deltaB, catagoryB, *_ = row
+            fill +=1                
                 
+                
+    csv_outputs = pd.DataFrame(deathspots, columns = ['frame','x1A', 'y1A', 'x2A', 'y2A','labelA'])
+    return(csv_outputs)
+
+def analyzeSORT(df,threshold,slow_move,delta_overlap):
+    vc = df.label.value_counts()
+    test = vc[vc > threshold].index.tolist()
+    deadboxes = []
+    deathspots = []  
+    for ID in test:      
+        filtval = df['label'] ==ID
+        interim = df[filtval]
+        interimD = []
+        interim2 = np.asarray(interim)
+        fill = 0
+        deadcount = 0
+        alivecount = 0
+        isdead = 0
+        x1E = interim['x1'].iloc[0]
+        y1E = interim['y1'].iloc[0]
+        x2E = interim['x2'].iloc[0]
+        y2E = interim['y2'].iloc[0]
+        for row in reversed(interim2):
+            frameNA, x1A, y1A, x2A, y2A, labelA, deltaA, catagoryA, *_ = row
+            if fill > 1:
+                boxA = [x1A, y1A, x2A, y2A]
+                boxB = [x1B, y1B, x2B, y2B]
+                deltaA = bb_intersection_over_union(boxA, boxB) 
+                if deltaA > delta_overlap:
+                    deadcount+=abs(frameNA-frameNB)           
+                if deadcount > slow_move:
+                    if deadboxes == []:
+                        deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])                          
+                        deadboxes.append([x1A, y1A, x2A, y2A])
+                        isdead = 1
+                        x1Z = x1A
+                        y1Z = y1A
+                        x2Z = x2A
+                        y2Z = y2A
+                    else:
+                        notunique = 0
+                        for box in deadboxes:
+                            #print(box)
+                            x1D, y1D, x2D, y2D, *_ = box
+                            boxD = [x1D, y1D, x2D, y2D]
+                            deltaD = bb_intersection_over_union(boxA, boxD)  
+                            if deltaD > 0.2:
+                                notunique = 1
+                        if notunique == 0:
+                            deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])  
+                            deadboxes.append([x1A, y1A, x2A, y2A])
+                            isdead = 1
+                            x1Z = x1A
+                            y1Z = y1A
+                            x2Z = x2A
+                            y2Z = y2A
+                if isdead==1 and deadcount > slow_move:               
+                    boxA = [x1B, y1B, x2B, y2B]
+                    boxZ = [x1Z, y1Z, x2Z, y2Z]
+                    deltaZ = bb_intersection_over_union(boxA, boxZ) 
+                    if deltaZ < 0.4:
+                        #alivecount+=abs(frameNA-frameNB)
+                        #print(frameNA,frameNB,deltaZ,deadcount,labelA)
+                        #if alivecount > 1:
+                        deadcount = 1
+                        deathspots =  deathspots[:-1] 
+                        deadboxes = deadboxes[:-1]
+                        isdead=0
+                #if deadcount > 5*slow_move:
+                   # print("broke cause of long",frameNA,frameNB,deadcount)
+                    #break
+            frameNB, x1B, y1B, x2B, y2B,labelB, deltaB, catagoryB, *_ = row
+            fill +=1                
                 
                 
     csv_outputs = pd.DataFrame(deathspots, columns = ['frame','x1A', 'y1A', 'x2A', 'y2A','labelA'])
@@ -137,10 +205,10 @@ if __name__ == "__main__":
     OUT_FOLD_PATH = sys.argv[2]
     
     #ARGS
-    threshold = 75 #number of frames a worm has to be tracked in order to be analyzed
-    slow_move = 20 #number of frames overlapping by 'delta_overlap' before being called dead or paralyzed (15ish=dead,5=paralyzed)
-    delta_overlap = 0.95 #%overlap to be called motionless (.9 for dead, .7 for paralyzed
-    max_frame = 2750
+    threshold = 2 #number of frames a worm has to be tracked in order to be analyzed
+    slow_move = 5 #number of frames overlapping by 'delta_overlap' before being called dead or paralyzed (15ish=dead,5=paralyzed)
+    delta_overlap = 0.8 #%overlap to be called motionless (.95 for dead, .8 for paralyzed
+    max_frame = 3750
 
     csv_list = os.listdir(CSV_FOLD_PATH)
     csv_list = list(filter(lambda f: f.endswith('.csv'), csv_list))
@@ -160,18 +228,18 @@ if __name__ == "__main__":
         df['x2']=df[['x1','w']].sum(axis=1)
         df['y2']=df[['y1','h']].sum(axis=1)
         df = df[['frame','x1', 'y1', 'x2', 'y2']]
-        df = df['frame'] < max_frame
+        filtval = df['frame'] < max_frame
         df = df[filtval]
         
         unique = df["frame"].unique()
 
         #initialize sort tracker and create container       
-        mot_tracker1 =Sort(max_age=0, min_hits=0, iou_threshold=0.8)  #see SORT documentation NEEDS TUNING
+        mot_tracker1 =Sort(max_age=0, min_hits=0, iou_threshold=0.3)  #see SORT documentation NEEDS TUNING
         sort_outputs = []
         print("sorting")
         
         #sort from end of experiment backwards
-        for x in tqdm(reversed(unique),total=len(unique)):
+        for x in reversed(unique):
             frame = int(x)
             filtval = df['frame'] == x
             boxes_xyxy = np.asarray(df[filtval])[:,1:5]
@@ -188,7 +256,7 @@ if __name__ == "__main__":
         print("creating max/min arrays")
         #for each label, create max and minimum arrays. This is done dumbly feel free to improve via vectorization.
         uniqueTracks = sort_outputs["label"].unique()
-        for track in tqdm(uniqueTracks):
+        for track in uniqueTracks:
             filtval = sort_outputs['label'] == track
             trackdf = sort_outputs[filtval]
             max_value = trackdf['frame'].max()
@@ -217,8 +285,7 @@ if __name__ == "__main__":
 
     
         
-        pbar = tqdm(total =len(uniqueTracks)+1)
-        
+       
         #this section is kinda a mess but it works
         #goes from labels at the end of the experiment and progresses toward the beginning
         #for a given label (labelmin)
@@ -230,7 +297,9 @@ if __name__ == "__main__":
         itersMin = 1
         while itersMin < len(uniqueTracks):
             labelX = uniqueTracks[itersMin]
+            #print(labelX)
             wormA = dfmin[dfmin['label'] == labelX]
+            #print(wormA)
             frameA = wormA['frame'].iloc[-1]
             x1A = wormA['x1'].iloc[-1]
             y1A = wormA['y1'].iloc[-1]
@@ -239,8 +308,11 @@ if __name__ == "__main__":
             labelA = wormA['label'].iloc[-1]
             itersMin +=1
             itersMax = itersMin
+            #print(len(uniqueTracks))
             while itersMax < len(uniqueTracks):
+                uniqueTracks[uniqueTracks>labelA]
                 labelY = uniqueTracks[itersMax]
+                #print(labelY)
                 wormB = dfmax[dfmax['label'] == labelY]
                 frameB = wormB['frame'].iloc[-1]
                 x1B = wormB['x1'].iloc[-1]
@@ -252,17 +324,28 @@ if __name__ == "__main__":
                 if frameB < frameA and labelA != labelB:
                     boxA = [x1A, y1A, x2A, y2A]
                     boxB = [x1B, y1B, x2B, y2B]
-                    delta = bb_intersection_over_union(boxA, boxB)            
-                    if delta > 0.2: #overlap threshold
+                    delta = bb_intersection_over_union(boxA, boxB)
+                    if abs(frameA-frameB)<5:
+                        deltathresh = 0.2
+                    elif abs(frameA-frameB)<36:
+                        deltathresh = 0.4
+                    else:
+                        deltathresh = 0.7
+                    if delta > deltathresh:
+                        #print('changing ',labelB,' to ',labelA,' at frame:',frameB)
                         sort2 = sort2.replace({'label': labelB}, labelA)
                         dfmax =dfmax.replace({'label': labelB}, labelA)
                         dfmin = dfmin.replace({'label': labelB}, labelA)
+
+                        #dfmax = np.where(dfmax == labelB, labelA, dfmax)
+                        #dfmin = np.where(dfmin == labelB, labelA, dfmin)
                         uniqueTracks[uniqueTracks==labelB]=labelA
+                        #maxOver.append(labelB)
                         break            
-                    if frameB == (frameA-144): #threshold of time
+                    if frameB < (frameA-144):
                         break
-            pbar.update(1)
-        pbar.close()
+
+
 
 
         #reformat output to be accepted into analyze sort
