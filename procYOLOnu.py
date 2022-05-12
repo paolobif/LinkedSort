@@ -22,80 +22,6 @@ from tqdm import tqdm
 
 
 
-def analyzeSORT3(df,threshold,slow_move,delta_overlap):
-    vc = df.label.value_counts()
-    test = vc[vc > threshold].index.tolist()
-    deadboxes = []
-    deathspots = []  
-    for ID in test:      
-        filtval = df['label'] ==ID
-        interim = df[filtval]
-        interimD = []
-        interim2 = np.asarray(interim)
-        fill = 0
-        deadcount = 0
-        alivecount = 0
-        isdead = 0
-        x1E = interim['x1'].iloc[0]
-        y1E = interim['y1'].iloc[0]
-        x2E = interim['x2'].iloc[0]
-        y2E = interim['y2'].iloc[0]
-        for row in reversed(interim2):
-            frameNA, x1A, y1A, x2A, y2A, labelA, deltaA, catagoryA, *_ = row
-            if fill > 1:
-                boxA = [x1A, y1A, x2A, y2A]
-                boxB = [x1B, y1B, x2B, y2B]
-                deltaA = bb_intersection_over_union(boxA, boxB) 
-                if deltaA > delta_overlap:
-                    deadcount+=abs(frameNA-frameNB)           
-                if deadcount > slow_move:
-                    if deadboxes == []:
-                        deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])                          
-                        deadboxes.append([x1A, y1A, x2A, y2A])
-                        isdead = 1
-                        x1Z = x1A
-                        y1Z = y1A
-                        x2Z = x2A
-                        y2Z = y2A
-                    else:
-                        notunique = 0
-                        for box in deadboxes:
-                            #print(box)
-                            x1D, y1D, x2D, y2D, *_ = box
-                            boxD = [x1D, y1D, x2D, y2D]
-                            deltaD = bb_intersection_over_union(boxA, boxD)  
-                            if deltaD > 0.2:
-                                notunique = 1
-                        if notunique == 0:
-                            deathspots.append([frameNA, x1A, y1A, x2A, y2A,labelA])  
-                            deadboxes.append([x1A, y1A, x2A, y2A])
-                            isdead = 1
-                            x1Z = x1A
-                            y1Z = y1A
-                            x2Z = x2A
-                            y2Z = y2A
-                if isdead==1 and deadcount > slow_move:               
-                    boxA = [x1B, y1B, x2B, y2B]
-                    boxZ = [x1Z, y1Z, x2Z, y2Z]
-                    deltaZ = bb_intersection_over_union(boxA, boxZ) 
-                    if deltaZ < 0.3:
-                        #alivecount+=abs(frameNA-frameNB)
-                        #print(frameNA,frameNB,deltaZ,deadcount,labelA)
-                        #if alivecount > 1:
-                        deadcount = 1
-                        deathspots =  deathspots[:-1] 
-                        deadboxes = deadboxes[:-1]
-                        isdead=0
-                if deadcount > 3*slow_move:
-                    #print("broke cause of long",frameNA,frameNB,deadcount)
-                    break
-            frameNB, x1B, y1B, x2B, y2B,labelB, deltaB, catagoryB, *_ = row
-            fill +=1                
-                
-                
-    csv_outputs = pd.DataFrame(deathspots, columns = ['frame','x1A', 'y1A', 'x2A', 'y2A','labelA'])
-    return(csv_outputs)
-
 def analyzeSORT(df,threshold,slow_move,delta_overlap):
     vc = df.label.value_counts()
     test = vc[vc > threshold].index.tolist()
@@ -170,6 +96,7 @@ def analyzeSORT(df,threshold,slow_move,delta_overlap):
     csv_outputs = pd.DataFrame(deathspots, columns = ['frame','x1A', 'y1A', 'x2A', 'y2A','labelA'])
     return(csv_outputs)
 
+
 def bb_intersection_over_union(boxA, boxB):
     # determine the (x, y)-coordinates of the intersection rectangle
     xA = max(boxA[0], boxB[0])
@@ -206,9 +133,9 @@ if __name__ == "__main__":
     
     #ARGS
     threshold = 2 #number of frames a worm has to be tracked in order to be analyzed
-    slow_move = 5 #number of frames overlapping by 'delta_overlap' before being called dead or paralyzed (15ish=dead,5=paralyzed)
-    delta_overlap = 0.8 #%overlap to be called motionless (.95 for dead, .8 for paralyzed
-    max_frame = 3750
+    slow_move = 15 #number of frames overlapping by 'delta_overlap' before being called dead or paralyzed (15ish=dead,5=paralyzed)
+    delta_overlap = 0.95 #%overlap to be called motionless (.95 for dead, .8 for paralyzed
+    max_frame = 5000
 
     csv_list = os.listdir(CSV_FOLD_PATH)
     csv_list = list(filter(lambda f: f.endswith('.csv'), csv_list))
@@ -249,7 +176,11 @@ if __name__ == "__main__":
                 sort_outputs.append([x.tolist(), x1.tolist(), y1.tolist(), x2.tolist(),y2.tolist(),label.tolist()])
         sort_outputs = pd.DataFrame(sort_outputs)
         sort_outputs.columns = ['frame','x1', 'y1', 'x2', 'y2','label']
-
+        vc = sort_outputs.label.value_counts()
+        test = vc[vc > 2].index.tolist()
+        sort_outputs = sort_outputs[sort_outputs['label'].isin(test)]
+        
+        
         #create container dataframes for maximum and minimum frames for each label
         dfmin = pd.DataFrame(columns=['frame', 'x1', 'y1','x2','y2','label'])
         dfmax = pd.DataFrame(columns=['frame', 'x1', 'y1','x2','y2','label'])
@@ -347,7 +278,7 @@ if __name__ == "__main__":
 
 
 
-
+        #print(sort2)
         #reformat output to be accepted into analyze sort
         csv_outputs = pd.DataFrame(sort2)
         csv_outputs.columns = ['frame', 'x1', 'y1', 'x2', 'y2','label']
@@ -356,6 +287,7 @@ if __name__ == "__main__":
         
         #analyze for death
         outputs = analyzeSORT(csv_outputs,threshold,slow_move,delta_overlap)
+        #print(outputs)
         outputs['expID'] = os.path.basename(csv_PATH).strip('.csv')
 
         #export and move to next csv file
